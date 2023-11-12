@@ -42,6 +42,8 @@ public final class Keychain {
         static let returnAttributes = kSecReturnAttributes.stringValue
         static let service = kSecAttrService.stringValue
         static let valueData = kSecValueData.stringValue
+        @available(iOS 13.0, tvOS 13.0, macOS 10.15, watchOS 6.0, *)
+        static let useDataProtectionKeychain = kSecUseDataProtectionKeychain.stringValue
 
         static let genericPassword = kSecClassGenericPassword.stringValue
         static let matchLimitOne = kSecMatchLimitOne.stringValue
@@ -52,6 +54,7 @@ public final class Keychain {
         ?? "com.codablekeychain.service"
     public private(set) static var defaultService: String = defaultIdentifier
     public private(set) static var defaultAccessGroup: String? = nil
+    public private(set) static var defaultAccessibility: AccessibleOption = .whenUnlocked
 
     public static let `default` = Keychain()
 
@@ -63,9 +66,14 @@ public final class Keychain {
 
     // MARK: - Public
 
-    public static func configureDefaults(withService service: String = defaultService, accessGroup: String? = defaultAccessGroup) {
+    public static func configureDefaults(
+        withService service: String = defaultService,
+        accessGroup: String? = defaultAccessGroup,
+        accessibility: AccessibleOption = defaultAccessibility
+    ) {
         defaultService = service
         defaultAccessGroup = accessGroup
+        defaultAccessibility = accessibility
     }
 
     public static func resetDefaults() {
@@ -75,18 +83,28 @@ public final class Keychain {
 
     public func store<T: KeychainStorable>(_ storable: T, service: String = defaultService, accessGroup: String? = defaultAccessGroup) throws {
         let newData = try JSONEncoder().encode(storable)
-        var query = self.query(forAccount: storable.account, service: service, accessGroup: accessGroup)
-        let existingData = try data(forAccount: storable.account, service: service, accessGroup: accessGroup)
+        try store(newData, accessible: storable.accessible, account: storable.account, service: service, accessGroup: accessGroup)
+    }
+
+    @discardableResult
+    private func store(_ newData: Data, accessible: AccessibleOption, account: String, service: String, accessGroup: String?, updateExisting: Bool = true) throws -> Bool {
+        var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
         var status = noErr
-        let newAttributes: [String: Any] = [Constants.valueData: newData, Constants.accessible: storable.accessible.rawValue]
-        if existingData != nil {
+        let newAttributes: [String: Any] = [Constants.valueData: newData, Constants.accessible: accessible.rawValue]
+        if updateExisting, try containsData(forAccount: account, service: service, accessGroup: accessGroup) {
             status = securityItemManager.update(withQuery: query, attributesToUpdate: newAttributes)
         } else {
             query.merge(newAttributes) { $1 }
             status = securityItemManager.add(withAttributes: query, result: nil)
         }
         if let error = error(fromStatus: status) {
-            throw error
+            if updateExisting || error != .duplicateItem {
+                throw error
+            } else {
+                return false
+            }
+        } else {
+            return true
         }
     }
 
@@ -97,7 +115,11 @@ public final class Keychain {
     }
 
     public func retrieveAccounts(withService service: String = defaultService, accessGroup: String? = defaultAccessGroup) throws -> [String] {
-        var query = self.query(forAccount: nil, service: service, accessGroup: accessGroup)
+        try retrieveAccounts(withService: service, accessGroup: accessGroup, useDataProtection: true)
+    }
+
+    private func retrieveAccounts(withService service: String = defaultService, accessGroup: String? = defaultAccessGroup, useDataProtection: Bool) throws -> [String] {
+        var query = self.query(forAccount: nil, service: service, accessGroup: accessGroup, useDataProtection: useDataProtection)
         query[Constants.matchLimit] = Constants.matchLimitAll
         query[Constants.returnAttributes] = kCFBooleanTrue
         var result: AnyObject?
@@ -124,6 +146,24 @@ public final class Keychain {
         }
     }
 
+    /// Migrates objects that were written prior to macOS 10.15 to a format that can be read on macOS 10.15 and later.
+    @available(macOS 10.15, *)
+    public func migrateObjectsFromPreCatalina(
+        service: String = defaultService,
+        accessGroup: String? = defaultAccessGroup,
+        accessible: AccessibleOption = defaultAccessibility
+    ) throws {
+        let accounts = try retrieveAccounts(withService: service, accessGroup: accessGroup, useDataProtection: false)
+        for account in accounts {
+            guard let data = try self.data(forAccount: account, service: service, accessGroup: accessGroup, useDataProtection: false) else {
+                continue
+            }
+            if try store(data, accessible: accessible, account: account, service: service, accessGroup: accessGroup, updateExisting: false) {
+                try delete(withQuery: query(forAccount: account, service: service, accessGroup: accessGroup, useDataProtection: false))
+            }
+        }
+    }
+
     // MARK: - Convenience
 
     func delete(withQuery query: [String: Any]) throws {
@@ -133,7 +173,7 @@ public final class Keychain {
 
     // MARK: - Query
 
-    func query(forAccount account: String?, service: String, accessGroup: String?) -> [String: Any] {
+    func query(forAccount account: String?, service: String, accessGroup: String?, useDataProtection: Bool = true) -> [String: Any] {
         var query: [String: Any] = [
             Constants.service: service,
             Constants.class: Constants.genericPassword
@@ -144,23 +184,38 @@ public final class Keychain {
         if let accessGroup = accessGroup {
             query[Constants.accessGroup] = accessGroup
         }
+        if #available(iOS 13.0, tvOS 13.0, macOS 10.15, watchOS 6.0, *) {
+            query[Constants.useDataProtectionKeychain] = useDataProtection
+        }
         return query
     }
 
     // MARK: - Data
 
-    func data(forAccount account: String, service: String, accessGroup: String?) throws -> Data? {
-        var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
+    func data(forAccount account: String, service: String, accessGroup: String?, useDataProtection: Bool = true) throws -> Data? {
+        var query = self.query(forAccount: account, service: service, accessGroup: accessGroup, useDataProtection: useDataProtection)
         query[Constants.matchLimit] = Constants.matchLimitOne
         query[Constants.returnData] = kCFBooleanTrue
         var result: AnyObject?
         let status = withUnsafeMutablePointer(to: &result) {
             securityItemManager.copyMatching(query, result: UnsafeMutablePointer($0))
         }
-        if let error = error(fromStatus: status), error != .itemNotFound  { throw error }
+        if let error = error(fromStatus: status), error != .itemNotFound { throw error }
         guard result != nil else { return nil }
         guard let resultData = result as? Data else { throw AccessError.invalidQueryResult }
         return resultData
+    }
+
+    func containsData(forAccount account: String, service: String, accessGroup: String?) throws -> Bool {
+        var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
+        query[Constants.matchLimit] = Constants.matchLimitOne
+        query[Constants.returnData] = kCFBooleanFalse
+        var result: AnyObject?
+        let status = withUnsafeMutablePointer(to: &result) {
+            securityItemManager.copyMatching(query, result: UnsafeMutablePointer($0))
+        }
+        if let error = error(fromStatus: status), error != .itemNotFound { throw error }
+        return result != nil
     }
 
     // MARK: - Error

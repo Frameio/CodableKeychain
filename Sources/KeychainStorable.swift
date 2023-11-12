@@ -31,6 +31,6 @@ public protocol KeychainStorable: Codable {
 
 public extension KeychainStorable {
 
-    var accessible: Keychain.AccessibleOption { return .whenUnlocked }
+    var accessible: Keychain.AccessibleOption { return Keychain.defaultAccessibility }
 
 }
