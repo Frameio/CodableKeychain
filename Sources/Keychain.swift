@@ -91,7 +91,7 @@ public final class Keychain {
         var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
         var status = noErr
         let newAttributes: [String: Any] = [Constants.valueData: newData, Constants.accessible: accessible.rawValue]
-        if updateExisting, try containsData(forAccount: account, service: service, accessGroup: accessGroup) {
+        if updateExisting, try containsValue(forAccount: account, service: service, accessGroup: accessGroup) {
             status = securityItemManager.update(withQuery: query, attributesToUpdate: newAttributes)
         } else {
             query.merge(newAttributes) { $1 }
@@ -206,7 +206,7 @@ public final class Keychain {
         return resultData
     }
 
-    func containsData(forAccount account: String, service: String, accessGroup: String?) throws -> Bool {
+    func containsValue(forAccount account: String, service: String, accessGroup: String?) throws -> Bool {
         var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
         query[Constants.matchLimit] = Constants.matchLimitOne
         query[Constants.returnData] = kCFBooleanFalse
@@ -214,8 +214,12 @@ public final class Keychain {
         let status = withUnsafeMutablePointer(to: &result) {
             securityItemManager.copyMatching(query, result: UnsafeMutablePointer($0))
         }
-        if let error = error(fromStatus: status), error != .itemNotFound { throw error }
-        return result != nil
+        guard let error = error(fromStatus: status) else { return true }
+        if error == .itemNotFound {
+            return false
+        } else {
+            throw error
+        }
     }
 
     // MARK: - Error
