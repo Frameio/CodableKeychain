@@ -134,8 +134,7 @@ public final class Keychain {
 
     public func delete<T: KeychainStorable>(_ storable: T, service: String = defaultService, accessGroup: String? = defaultAccessGroup) throws {
         let query = self.query(forAccount: storable.account, service: service, accessGroup: accessGroup)
-        let status = securityItemManager.delete(withQuery: query)
-        if let error = error(fromStatus: status) { throw error }
+        try delete(withQuery: query)
     }
 
     public func clearAll(withService service: String = defaultService, accessGroup: String? = defaultAccessGroup) throws {
@@ -168,7 +167,7 @@ public final class Keychain {
 
     func delete(withQuery query: [String: Any]) throws {
         let status = securityItemManager.delete(withQuery: query)
-        if let error = error(fromStatus: status) { throw error }
+        if let error = error(fromStatus: status), error != .itemNotFound { throw error }
     }
 
     // MARK: - Query
