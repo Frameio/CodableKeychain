@@ -42,18 +42,12 @@ let package = Package(
     targets: [
         .target(
             name: "CodableKeychain",
-            path: "Sources",
-            exclude: ["Info.plist"]
+            path: "Sources"
         ),
         .testTarget(
             name: "CodableKeychainTests",
             dependencies: ["CodableKeychain"],
-            path: "Tests",
-            exclude: ["Info.plist"]
+            path: "Tests"
         )
-    ],
-    swiftLanguageVersions: [
-        .v4_2,
-        .v5
     ]
 )

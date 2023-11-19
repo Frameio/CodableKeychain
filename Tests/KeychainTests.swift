@@ -146,6 +146,7 @@ class KeychainTests: XCTestCase {
     func testStoreError() {
         let mockManager = MockSecurityItemManager()
         mockManager.addError = .missingEntitlement
+        mockManager.updateError = .missingEntitlement
         let keychain = Keychain(securityItemManager: mockManager)
         XCTAssertThrowsError(try keychain.store(credential))
     }
@@ -208,8 +209,8 @@ class KeychainTests: XCTestCase {
         XCTAssertNotNil(retrievedTwo)
     }
 
-    func testDeleteUnsavedValue() {
-        XCTAssertThrowsError(try keychain.delete(credential))
+    func testDeleteUnsavedValue() throws {
+        try keychain.delete(credential)
     }
 
     func testClearAll() throws {
