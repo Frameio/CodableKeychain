@@ -22,46 +22,53 @@
 //  THE SOFTWARE.
 //
 
-public enum KeychainError: Int, Error {
+import Foundation
 
-    case allocate = -108
-    case authenticationFailed = -25293
-    case bufferTooSmall = -25301
-    case createChainFailed = -25318
-    case dataNotAvailable = -25316
-    case dataNotModifiable = -25317
-    case dataTooLarge = -25302
-    case decode = -26275
-    case duplicateCallback = -25297
-    case duplicateItem = -25299
-    case duplicateKeychain = -25296
-    case inDarkWake = -25320
-    case interactionNotAllowed = -25308
-    case interactionRequired = -25315
-    case invalidCallback = -25298
-    case invalidKeychain = -25295
-    case invalidItemReference = -25304
-    case invalidParameters = -50
-    case invalidPreferenceDomain = -25319
-    case invalidSearchReference = -25305
-    case itemNotFound = -25300
-    case keySizeNotAllowed = -25311
-    case missingEntitlement = -34018
-    case noCertificateModule = -25313
-    case noDefaultKeychain = -25307
-    case noPolicyModule = -25314
-    case noStorageModule = -25312
-    case noSuchAttribute = -25303
-    case noSuchClass = -25306
-    case noSuchKeychain = -25294
-    case notAvailable = -25291
-    case readOnly = -25292
-    case readOnlyAttribute = -25309
-    case unimplemented = -4
-    case wrongVersion = -25310
-    case unknown = -1
+public struct KeychainError: Hashable, LocalizedError, CustomNSError {
 
-    public var localizedDescription: String {
+    static var allocate: Self { .init(errSecAllocate) }
+    static var authenticationFailed: Self { .init(errSecAuthFailed) }
+    static var bufferTooSmall: Self { .init(errSecBufferTooSmall) }
+    static var createChainFailed: Self { .init(errSecCreateChainFailed) }
+    static var dataNotAvailable: Self { .init(errSecDataNotAvailable) }
+    static var dataNotModifiable: Self { .init(errSecDataNotModifiable) }
+    static var dataTooLarge: Self { .init(errSecDataTooLarge) }
+    static var decode: Self { .init(errSecDecode) }
+    static var duplicateCallback: Self { .init(errSecDuplicateCallback) }
+    static var duplicateItem: Self { .init(errSecDuplicateItem) }
+    static var duplicateKeychain: Self { .init(errSecDuplicateKeychain) }
+    static var inDarkWake: Self { .init(errSecInDarkWake) }
+    static var interactionNotAllowed: Self { .init(errSecInteractionNotAllowed) }
+    static var interactionRequired: Self { .init(errSecInteractionRequired) }
+    static var invalidCallback: Self { .init(errSecInvalidCallback) }
+    static var invalidKeychain: Self { .init(errSecInvalidKeychain) }
+    static var invalidItemReference: Self { .init(errSecInvalidItemRef) }
+    static var invalidParameters: Self { .init(errSecParam) }
+    static var invalidPreferenceDomain: Self { .init(errSecInvalidPrefsDomain) }
+    static var invalidSearchReference: Self { .init(errSecInvalidSearchRef) }
+    static var itemNotFound: Self { .init(errSecItemNotFound) }
+    static var keySizeNotAllowed: Self { .init(errSecKeySizeNotAllowed) }
+    static var missingEntitlement: Self { .init(errSecMissingEntitlement) }
+    static var noCertificateModule: Self { .init(errSecNoCertificateModule) }
+    static var noDefaultKeychain: Self { .init(errSecNoDefaultKeychain) }
+    static var noPolicyModule: Self { .init(errSecNoPolicyModule) }
+    static var noStorageModule: Self { .init(errSecNoStorageModule) }
+    static var noSuchAttribute: Self { .init(errSecNoSuchAttr) }
+    static var noSuchClass: Self { .init(errSecNoSuchClass) }
+    static var noSuchKeychain: Self { .init(errSecNoSuchKeychain) }
+    static var notAvailable: Self { .init(errSecNotAvailable) }
+    static var readOnly: Self { .init(errSecReadOnly) }
+    static var readOnlyAttribute: Self { .init(errSecReadOnlyAttr) }
+    static var unimplemented: Self { .init(errSecUnimplemented) }
+    static var wrongVersion: Self { .init(errSecWrongSecVersion) }
+
+    public let errorCode: OSStatus
+    public var errorDomain: String { "com.codablekeychain" }
+
+    public var errorDescription: String? {
+        if #available(iOS 11.3, tvOS 11.3, watchOS 4.3, macOS 10.3, *) {
+            return SecCopyErrorMessageString(errorCode, nil) as String?
+        }
         switch self {
         case .allocate:
             return "Failed to allocate memory."
@@ -133,9 +140,13 @@ public enum KeychainError: Int, Error {
             return "A function or operation is not implemented."
         case .wrongVersion:
             return "The version is incorrect."
-        case .unknown:
+        default:
             return "An unknown error occurred."
         }
+    }
+
+    public init(_ errorCode: OSStatus) {
+        self.errorCode = errorCode
     }
 
 }

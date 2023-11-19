@@ -69,14 +69,14 @@ class KeychainErrorTests: XCTestCase {
             Test(input: errSecReadOnlyAttr, output: .readOnlyAttribute),
             Test(input: errSecUnimplemented, output: .unimplemented),
             Test(input: errSecWrongSecVersion, output: .wrongVersion),
-            Test(input: OSStatus(-1), output: .unknown),
+            Test(input: OSStatus(-1), output: .init(-1)),
         ]
     }
 
     func testErrorInitialization() {
         tests.forEach {
-            let output = KeychainError(rawValue: Int($0.input))
-            XCTAssertEqual(output?.localizedDescription, $0.output.localizedDescription)
+            let output = KeychainError($0.input)
+            XCTAssertEqual(output.errorDescription, $0.output.errorDescription)
         }
     }
 

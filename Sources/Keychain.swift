@@ -208,11 +208,7 @@ public final class Keychain {
     func containsValue(forAccount account: String, service: String, accessGroup: String?) throws -> Bool {
         var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
         query[Constants.matchLimit] = Constants.matchLimitOne
-        query[Constants.returnData] = kCFBooleanFalse
-        var result: AnyObject?
-        let status = withUnsafeMutablePointer(to: &result) {
-            securityItemManager.copyMatching(query, result: UnsafeMutablePointer($0))
-        }
+        let status = securityItemManager.copyMatching(query, result: nil)
         guard let error = error(fromStatus: status) else { return true }
         if error == .itemNotFound {
             return false
@@ -225,7 +221,7 @@ public final class Keychain {
 
     func error(fromStatus status: OSStatus) -> KeychainError? {
         guard status != noErr && status != errSecSuccess else { return nil }
-        return KeychainError(rawValue: Int(status)) ?? .unknown
+        return KeychainError(status)
     }
 
 }
