@@ -59,6 +59,7 @@ public final class Keychain {
     public static let `default` = Keychain()
 
     let securityItemManager: SecurityItemManaging
+    private let lock = NSRecursiveLock()
 
     init(securityItemManager: SecurityItemManaging = SecurityItemManager.default) {
         self.securityItemManager = securityItemManager
@@ -89,13 +90,14 @@ public final class Keychain {
     @discardableResult
     private func store(_ newData: Data, accessible: AccessibleOption, account: String, service: String, accessGroup: String?, updateExisting: Bool = true) throws -> Bool {
         var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
-        var status = noErr
         let newAttributes: [String: Any] = [Constants.valueData: newData, Constants.accessible: accessible.rawValue]
-        if updateExisting, try containsValue(forAccount: account, service: service, accessGroup: accessGroup) {
-            status = securityItemManager.update(withQuery: query, attributesToUpdate: newAttributes)
-        } else {
-            query.merge(newAttributes) { $1 }
-            status = securityItemManager.add(withAttributes: query, result: nil)
+        let status = try lock.withLock {
+            if updateExisting, try containsValue(forAccount: account, service: service, accessGroup: accessGroup) {
+                return securityItemManager.update(withQuery: query, attributesToUpdate: newAttributes)
+            } else {
+                query.merge(newAttributes) { $1 }
+                return securityItemManager.add(withAttributes: query, result: nil)
+            }
         }
         if let error = error(fromStatus: status) {
             if updateExisting || error != .duplicateItem {
@@ -166,7 +168,7 @@ public final class Keychain {
     // MARK: - Convenience
 
     func delete(withQuery query: [String: Any]) throws {
-        let status = securityItemManager.delete(withQuery: query)
+        let status = lock.withLock { securityItemManager.delete(withQuery: query) }
         if let error = error(fromStatus: status), error != .itemNotFound { throw error }
     }
 
@@ -196,8 +198,8 @@ public final class Keychain {
         query[Constants.matchLimit] = Constants.matchLimitOne
         query[Constants.returnData] = kCFBooleanTrue
         var result: AnyObject?
-        let status = withUnsafeMutablePointer(to: &result) {
-            securityItemManager.copyMatching(query, result: UnsafeMutablePointer($0))
+        let status = withUnsafeMutablePointer(to: &result) { pointer in
+            lock.withLock { securityItemManager.copyMatching(query, result: UnsafeMutablePointer(pointer)) }
         }
         if let error = error(fromStatus: status), error != .itemNotFound { throw error }
         guard result != nil else { return nil }
@@ -208,7 +210,7 @@ public final class Keychain {
     func containsValue(forAccount account: String, service: String, accessGroup: String?) throws -> Bool {
         var query = self.query(forAccount: account, service: service, accessGroup: accessGroup)
         query[Constants.matchLimit] = Constants.matchLimitOne
-        let status = securityItemManager.copyMatching(query, result: nil)
+        let status = lock.withLock { securityItemManager.copyMatching(query, result: nil) }
         guard let error = error(fromStatus: status) else { return true }
         if error == .itemNotFound {
             return false
