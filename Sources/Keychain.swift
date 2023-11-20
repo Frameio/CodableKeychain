@@ -125,9 +125,7 @@ public final class Keychain {
         query[Constants.matchLimit] = Constants.matchLimitAll
         query[Constants.returnAttributes] = kCFBooleanTrue
         var result: AnyObject?
-        let status = withUnsafeMutablePointer(to: &result) {
-            securityItemManager.copyMatching(query, result: UnsafeMutablePointer($0))
-        }
+        let status = securityItemManager.copyMatching(query, result: &result)
         if let error = error(fromStatus: status), error != .itemNotFound { throw error }
         guard result != nil else { return [] }
         guard let attributes = result as? [[String: Any]] else { throw AccessError.invalidAccountRetrievalResult }
@@ -198,9 +196,7 @@ public final class Keychain {
         query[Constants.matchLimit] = Constants.matchLimitOne
         query[Constants.returnData] = kCFBooleanTrue
         var result: AnyObject?
-        let status = withUnsafeMutablePointer(to: &result) { pointer in
-            lock.withLock { securityItemManager.copyMatching(query, result: UnsafeMutablePointer(pointer)) }
-        }
+        let status = lock.withLock { securityItemManager.copyMatching(query, result: &result) }
         if let error = error(fromStatus: status), error != .itemNotFound { throw error }
         guard result != nil else { return nil }
         guard let resultData = result as? Data else { throw AccessError.invalidQueryResult }
