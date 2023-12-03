@@ -65,9 +65,11 @@ public struct KeychainError: Hashable, LocalizedError, CustomNSError {
     public let errorCode: OSStatus
     public var errorDomain: String { "com.codablekeychain" }
 
-    public var errorDescription: String? {
-        if #available(iOS 11.3, tvOS 11.3, watchOS 4.3, macOS 10.3, *) {
-            return SecCopyErrorMessageString(errorCode, nil) as String?
+    public var errorDescription: String? { localizedDescription }
+
+    public var localizedDescription: String {
+        if #available(iOS 11.3, tvOS 11.3, watchOS 4.3, macOS 10.3, *), let message = SecCopyErrorMessageString(errorCode, nil) {
+            return message as String
         }
         switch self {
         case .allocate:
