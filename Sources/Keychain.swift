@@ -197,8 +197,14 @@ public final class Keychain {
         query[Constants.returnData] = kCFBooleanTrue
         var result: AnyObject?
         let status = lock.withLock { securityItemManager.copyMatching(query, result: &result) }
-        if let error = error(fromStatus: status), error != .itemNotFound { throw error }
-        guard result != nil else { return nil }
+        if let error = error(fromStatus: status) {
+            if error == .itemNotFound {
+                return nil
+            } else {
+                throw error
+            }
+        }
+        guard let result else { return nil }
         guard let resultData = result as? Data else { throw AccessError.invalidQueryResult }
         return resultData
     }
