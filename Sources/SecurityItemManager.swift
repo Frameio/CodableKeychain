@@ -25,7 +25,7 @@
 import Foundation
 import Security
 
-protocol SecurityItemManaging {
+protocol SecurityItemManaging: Sendable {
 
     func add(withAttributes attributes: [String: Any], result: UnsafeMutablePointer<CoreFoundation.CFTypeRef?>?) -> OSStatus
     func update(withQuery query: [String: Any], attributesToUpdate: [String: Any]) -> OSStatus

@@ -25,7 +25,7 @@
 import XCTest
 @testable import CodableKeychain
 
-final class MockSecurityItemManager: SecurityItemManaging {
+private final class MockSecurityItemManager: SecurityItemManaging, @unchecked Sendable {
 
     var addError: KeychainError?
     var updateError: KeychainError?
@@ -56,7 +56,7 @@ final class MockSecurityItemManager: SecurityItemManaging {
 }
 
 struct Credential: KeychainStorable {
-    static var accessible: Keychain.AccessibleOption = .whenUnlocked
+    nonisolated(unsafe) static var accessible: Keychain.AccessibleOption = .whenUnlocked
     var accessible: Keychain.AccessibleOption { Self.accessible }
 
     let email: String
@@ -223,7 +223,7 @@ class KeychainTests: XCTestCase {
         XCTAssertEqual(try keychain.retrieveAccounts(), [])
     }
 
-    func testDeleteWithQeuryError() {
+    func testDeleteWithQueryError() {
         let query = keychain.query(forAccount: Email.test, service: Keychain.defaultService, accessGroup: accessGroup)
         let mockManager = MockSecurityItemManager()
         let mockKeychain = Keychain(securityItemManager: mockManager)
@@ -233,14 +233,13 @@ class KeychainTests: XCTestCase {
 
     func testStoreQuery() {
         let query = keychain.query(forAccount: Email.test, service: Keychain.defaultService, accessGroup: accessGroup)
-            as? [String: String]
-        let expectedQuery: [String: String] = [
-            kSecAttrService.stringValue: Keychain.defaultService,
-            kSecClass.stringValue: kSecClassGenericPassword.stringValue,
-            kSecAttrAccessGroup.stringValue: accessGroup,
-            kSecAttrAccount.stringValue: Email.test
-        ]
-        XCTAssertEqual(query, expectedQuery)
+        XCTAssertEqual(query[kSecAttrService.stringValue] as? String, Keychain.defaultService)
+        XCTAssertEqual(query[kSecClass.stringValue] as? String, kSecClassGenericPassword.stringValue)
+        XCTAssertEqual(query[kSecAttrAccessGroup.stringValue] as? String, accessGroup)
+        XCTAssertEqual(query[kSecAttrAccount.stringValue] as? String, Email.test)
+        if #available(iOS 13.0, tvOS 13.0, macOS 10.15, watchOS 6.0, *) {
+            XCTAssertEqual(query[kSecUseDataProtectionKeychain.stringValue] as? Bool, true)
+        }
     }
 
     func testUnknownError() {

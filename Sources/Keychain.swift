@@ -50,13 +50,13 @@ public final class Keychain {
         static let matchLimitAll = kSecMatchLimitAll.stringValue
     }
 
-    static var defaultIdentifier: String = Bundle.main.infoDictionary?[kCFBundleIdentifierKey.stringValue] as? String
+    nonisolated(unsafe) static var defaultIdentifier: String = Bundle.main.infoDictionary?[kCFBundleIdentifierKey.stringValue] as? String
         ?? "com.codablekeychain.service"
-    public private(set) static var defaultService: String = defaultIdentifier
-    public private(set) static var defaultAccessGroup: String? = nil
-    public private(set) static var defaultAccessibility: AccessibleOption = .whenUnlocked
+    nonisolated(unsafe) public private(set) static var defaultService: String = defaultIdentifier
+    nonisolated(unsafe) public private(set) static var defaultAccessGroup: String? = nil
+    nonisolated(unsafe) public private(set) static var defaultAccessibility: AccessibleOption = .whenUnlocked
 
-    public static let `default` = Keychain()
+    nonisolated(unsafe) public static let `default` = Keychain()
 
     let securityItemManager: SecurityItemManaging
     private let lock = NSRecursiveLock()

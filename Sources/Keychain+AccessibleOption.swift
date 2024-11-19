@@ -41,7 +41,15 @@ extension Keychain {
 
         case afterFirstUnlock
         case afterFirstUnlockThisDeviceOnly
+        @available(iOS, deprecated: 12.0, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlock")
+        @available(macOS, deprecated: 10.14, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlock")
+        @available(tvOS, deprecated: 12.0, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlock")
+        @available(watchOS, deprecated: 5.0, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlock")
         case always
+        @available(iOS, deprecated: 12.0, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlockThisDeviceOnly")
+        @available(macOS, deprecated: 10.14, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlockThisDeviceOnly")
+        @available(tvOS, deprecated: 12.0, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlockThisDeviceOnly")
+        @available(watchOS, deprecated: 5.0, message: "Use an accessibility level that provides some user protection, such as afterFirstUnlockThisDeviceOnly")
         case alwaysThisDeviceOnly
         case whenPasscodeSetThisDeviceOnly
         case whenUnlocked
