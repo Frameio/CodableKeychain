@@ -121,6 +121,14 @@ public final class Keychain {
     }
 
     private func retrieveAccounts(withService service: String = defaultService, accessGroup: String? = defaultAccessGroup, useDataProtection: Bool) throws -> [String] {
+        return try retrieveRecordAttributes(withService: service, accessGroup: accessGroup, useDataProtection: useDataProtection).compactMap { $0[Constants.account] as? String }
+    }
+    
+    public func retrieveRecordAttributes(withService service: String = defaultService, accessGroup: String? = defaultAccessGroup) throws -> [[String: Any]] {
+        try retrieveRecordAttributes(withService: service, accessGroup: accessGroup, useDataProtection: true)
+    }
+    
+    private func retrieveRecordAttributes(withService service: String = defaultService, accessGroup: String? = defaultAccessGroup, useDataProtection: Bool) throws -> [[String: Any]] {
         var query = self.query(forAccount: nil, service: service, accessGroup: accessGroup, useDataProtection: useDataProtection)
         query[Constants.matchLimit] = Constants.matchLimitAll
         query[Constants.returnAttributes] = kCFBooleanTrue
@@ -129,7 +137,7 @@ public final class Keychain {
         if let error = error(fromStatus: status), error != .itemNotFound { throw error }
         guard result != nil else { return [] }
         guard let attributes = result as? [[String: Any]] else { throw AccessError.invalidAccountRetrievalResult }
-        return attributes.compactMap { $0[Constants.account] as? String }
+        return attributes
     }
 
     public func delete<T: KeychainStorable>(_ storable: T, service: String = defaultService, accessGroup: String? = defaultAccessGroup) throws {
